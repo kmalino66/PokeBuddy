@@ -1,0 +1,110 @@
+﻿@using PokeCalc.Data
+@using PokeApiNet
+@inject PokemonDataService pds
+@inject PokemonPartyService pps
+
+<div class="card">
+    <div class="card-body">
+
+        @if (thisPokemon.partyIndex == -2 || (thisPokemon.pokemon == null && thisPokemon.partyIndex == -1))
+        {
+            <div class="text-center">
+                <input type="text" id="chosenPokemonAdd" @bind="chosenPokemonNameAdd" />
+                <button @onclick="add" class="btn btn-outline-secondary"><span class="material-icons-outlined">add</span></button>
+            </div>
+        }
+
+        @if (thisPokemon.pokemon != null)
+        {
+            <div class="text-center col">
+                <p>@thisPokemon.pokemon.Name</p>
+                <img src="@thisPokemon.pokemon.Sprites.FrontDefault" class="" />
+            </div>
+        } 
+
+        @if (isLoading)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        }
+
+        @if (!editMode && thisPokemon.partyIndex != -2)
+        {
+            <div>
+                <button @onclick="delete" class="btn btn-outline-secondary float-right"><span class="material-icons-outlined">delete</span></button>
+                <button @onclick="edit" class="btn btn-outline-secondary float-right"><span class="material-icons-outlined">edit</span></button>
+            </div>
+        }
+        else if (thisPokemon.partyIndex != -2)
+        {
+            <div class="text-center">
+                <input type="text" id="chosenPokemon" @bind="chosenPokemonName" />
+                <button @onclick="apply" class="btn btn-outline-secondary align-items-center"><span class="material-icons-outlined">done</span></button>
+            </div>
+        }
+
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public PartyMember thisPokemon { get; set; }
+
+    [Parameter]
+    public EventCallback<PartyMemberAction> OnPartyChange { get; set; }
+
+    bool editMode = false;
+    bool isLoading = false;
+    string chosenPokemonName = "";
+    string chosenPokemonNameAdd = "";
+
+    async void delete()
+    {
+        PartyMemberAction action = new PartyMemberAction(thisPokemon, PartyMemberActionEnum.Remove);
+        await OnPartyChange.InvokeAsync(action);
+    }
+
+    void edit()
+    {
+        editMode = true;
+    }
+
+    async void add()
+    {
+        //thisPokemon.pokemon = await pds.GetPokemonAsync(chosenPokemonNameAdd);
+        var newPokemon = pds.GetPokemonAsync(chosenPokemonNameAdd);
+        isLoading = true;
+        thisPokemon.pokemon = await newPokemon;
+
+        PartyMemberAction action;
+
+        if (thisPokemon.partyIndex == -1)
+        {
+            action = new PartyMemberAction(thisPokemon, PartyMemberActionEnum.SetEnemy);
+
+        }
+        else
+        {
+            action = new PartyMemberAction(thisPokemon, PartyMemberActionEnum.Add);
+
+        }
+
+        isLoading = false;
+        chosenPokemonNameAdd = "";
+        await OnPartyChange.InvokeAsync(action);
+    }
+
+    async void apply()
+    {
+        thisPokemon.pokemon = await pds.GetPokemonAsync(chosenPokemonName);
+        PartyMemberAction action = new PartyMemberAction(thisPokemon, PartyMemberActionEnum.Modify);
+        editMode = false;
+        chosenPokemonName = "";
+        await OnPartyChange.InvokeAsync(action);
+    }
+}

@@ -1,0 +1,76 @@
+﻿@page "/"
+@using PokeCalc.Data
+@using PokeApiNet;
+@inject PokemonDataService pds
+@inject PokemonPartyService pps
+
+<div class="justify-content-center">
+    <div class="text-center">
+        <h1>Who's in your party?</h1>
+    </div>
+
+    <div class="card-deck">
+        @for (int i = 0; i < pps.partyPokemon.Count; i++)
+        {
+            <PokemonCard thisPokemon="@pps.GetPartyI(i)" OnPartyChange="@PartyChanged" />
+        }
+        @if (pps.partyPokemon.Count < 6)
+        {
+            <PokemonCard thisPokemon="@(new PartyMember())" OnPartyChange="@PartyChanged" />
+        }
+    </div>
+</div>
+
+<div class="justify-content-center">
+    <div class="text-center">
+        <h1>Who are you up against?</h1>
+    </div>
+
+    @if (pps.enemyPokemon.pokemon == null)
+    {
+        <PokemonCard thisPokemon="@(new PartyMember(-1))" OnPartyChange="@PartyChanged" />
+
+    }
+    else
+    {
+        <PokemonCard thisPokemon="@pps.enemyPokemon" OnPartyChange="@PartyChanged" />
+    }
+
+</div>
+
+
+
+
+@code {
+    string pokemonName;
+    Pokemon selectedPokemon = new Pokemon();
+    bool pokemonSelected = false;
+
+
+    async void Submit()
+    {
+        Pokemon p = await pds.GetPokemonAsync(pokemonName);
+        selectedPokemon = p;
+        pokemonSelected = true;
+        this.StateHasChanged();
+    }
+
+    private void PartyChanged(PartyMemberAction action)
+    {
+        switch (action.action)
+        {
+            case PartyMemberActionEnum.Add:
+                pps.AddPokemon(action.member.pokemon);
+                break;
+            case PartyMemberActionEnum.Modify:
+                pps.UpdatePokemon(action.member);
+                break;
+            case PartyMemberActionEnum.Remove:
+                pps.RemovePokemon(action.member.partyIndex);
+                break;
+            case PartyMemberActionEnum.SetEnemy:
+                pps.enemyPokemon = new PartyMember(action.member.pokemon, -1);
+                break;
+        }
+    }
+}
